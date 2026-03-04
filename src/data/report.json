@@ -1,0 +1,30 @@
+{
+  "pluginName": "absint-a3",
+  "pluginRepository": "https://github.com/jenkinsci/absint-a3-plugin.git",
+  "pluginVersion": "1.1.0",
+  "jenkinsBaseline": "",
+  "targetBaseline": "2.462",
+  "effectiveBaseline": "2.426",
+  "jenkinsVersion": "2.426.3",
+  "migrationName": "Upgrade to latest LTS core version supporting Java 11",
+  "migrationDescription": "Upgrade to latest LTS core version supporting Java 11.",
+  "tags": [
+    "developer"
+  ],
+  "migrationId": "io.jenkins.tools.pluginmodernizer.UpgradeToLatestJava11CoreVersion",
+  "migrationStatus": "success",
+  "pullRequestUrl": "https://github.com/jenkinsci/absint-a3-plugin/pull/11",
+  "pullRequestStatus": "merged",
+  "dryRun": false,
+  "additions": 15,
+  "deletions": 18,
+  "changedFiles": 1,
+  "key": "2025-09-03T07-37-22.json",
+  "path": "metadata-plugin-modernizer/absint-a3/modernization-metadata",
+  "checkRuns": {
+    "Jenkins": null
+  },
+  "checkRunsSummary": "pending",
+  "defaultBranch": "master",
+  "defaultBranchLatestCommitSha": "87b04253970c882ab050c089eca8c441ef18317b"
+}

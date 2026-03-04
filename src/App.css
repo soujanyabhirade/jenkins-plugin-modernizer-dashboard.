@@ -1,0 +1,61 @@
+:root {
+  background-color: #1a1a1a;
+  color: white;
+  font-family: sans-serif;
+}
+
+.dashboard {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background: #2d2d2d;
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.big-number {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #4caf50;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #2d2d2d;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th,
+td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #444;
+}
+
+.status-success {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.status-fail {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.repo-link {
+  color: #888;
+  font-size: 0.9rem;
+}
