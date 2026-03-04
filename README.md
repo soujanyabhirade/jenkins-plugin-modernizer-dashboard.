@@ -23,11 +23,8 @@ The dashboard directly aggregates live statistics natively from the unauthentica
 [https://plugins.jenkins.io/api/plugins](https://plugins.jenkins.io/api/plugins)
 
 ## Live Demo
-*(Insert your GitHub Pages deployment link here)*
+https://soujanyabhirade.github.io/jenkins-plugin-modernizer-dashboard./
 
-## Screenshots
-*(Add placeholder for dashboard screenshot here)*
-*(Add placeholder for plugin grid screenshot here)*
 
 ## Future Improvements
 
