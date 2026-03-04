@@ -31,6 +31,11 @@ https://soujanyabhirade.github.io/jenkins-plugin-modernizer-dashboard./
 - **Dependency Analysis:** Deeply trace outdated transitive dependencies required by the plugins.
 - **Deprecated API Detection:** Compare core API bindings to the latest required Jenkins baseline releases securely.
 - **AI-Powered Plugin Maintenance Predictions:** Leverage local language models to suggest specific code-recipes to automate plugin modernization.
+- 
+ ## Run Locally
+ git clone https://github.com/soujanyabhirade/jenkins-plugin-modernizer-dashboard.
+ cd jenkins-plugin-modernizer-dashboard
+
 
 ## Contribution
 
