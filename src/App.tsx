@@ -1,227 +1,282 @@
-import { useEffect, useState, useMemo } from 'react'
-import pluginData from './data/report.json'
+import { useState, useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
+import { usePlugins } from './hooks/usePlugins'
+import { type AnalyzedPlugin } from './services/dependencyAnalyzer'
 import './App.css'
 
 function App() {
+  const { data: plugins, loading, error } = usePlugins();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [dependencyFilter, setDependencyFilter] = useState('ALL');
 
-  useEffect(() => {
-    console.log("Loaded Plugin Data:", pluginData);
-  }, []);
+  // Side Panel State
+  const [selectedPlugin, setSelectedPlugin] = useState<AnalyzedPlugin | null>(null);
 
-  const migrations = useMemo(() => {
-    const rawData: any = pluginData;
-    if (Array.isArray(rawData)) {
-      return rawData;
-    } else if (rawData.migrations && Array.isArray(rawData.migrations)) {
-      return rawData.migrations;
-    } else if (rawData.reports && Array.isArray(rawData.reports)) {
-      return rawData.reports;
-    } else if (rawData.data && Array.isArray(rawData.data)) {
-      return rawData.data;
-    } else if (rawData.migrationStatus) {
-      return [rawData];
-    }
-    return [];
-  }, []);
+  // KPIs
+  const totalPlugins = plugins.length;
+  const popularCount = plugins.filter(p => (p.popularity || 0) > 500).length;
+  const nicheCount = plugins.filter(p => (p.popularity || 0) <= 500).length;
 
-  const uniquePluginsCount = useMemo(() => {
-    const plugins = new Set(migrations.map((m: any) => m.pluginName).filter(Boolean));
-    return plugins.size;
-  }, [migrations]);
+  // Chart 1: Modernization Health
+  const modernizationHealthOption = useMemo(() => {
+    let healthy = 0, needsAttention = 0, outdated = 0;
 
-  const successCount = migrations.filter((m: any) => m.migrationStatus === 'success').length;
-  const failCount = migrations.filter((m: any) => m.migrationStatus === 'fail').length;
+    plugins.forEach(p => {
+      if (p.riskLevel === 'HEALTHY') healthy++;
+      else if (p.riskLevel === 'NEEDS ATTENTION') needsAttention++;
+      else if (p.riskLevel === 'OUTDATED') outdated++;
+    });
 
-  const pieChartOption = useMemo(() => {
     return {
-      title: { text: 'Overall Migration Status', left: 'center', textStyle: { color: '#e0e0e0', fontWeight: 'bold' } },
+      title: { text: 'Plugin Modernization Health', left: 'center', textStyle: { color: '#e0e0e0', fontWeight: 'bold' } },
       tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
-      legend: { orient: 'vertical', left: 'left', textStyle: { color: '#a0a0a0' } },
+      legend: { bottom: '0', textStyle: { color: '#a0a0a0' } },
       series: [
         {
-          name: 'Status',
+          name: 'Health',
           type: 'pie',
           radius: '60%',
+          itemStyle: { borderRadius: 5, borderColor: '#161b22', borderWidth: 2 },
+          label: { show: false, position: 'center' },
+          emphasis: { label: { show: true, fontSize: '18', fontWeight: 'bold', color: '#fff' } },
           data: [
-            { value: successCount, name: 'Success', itemStyle: { color: '#238636' } },
-            { value: failCount, name: 'Fail', itemStyle: { color: '#da3633' } },
-          ],
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowOffsetX: 0,
-              shadowColor: 'rgba(0, 0, 0, 0.5)'
-            }
-          },
-          label: { color: '#e0e0e0' }
+            { value: healthy, name: 'Healthy', itemStyle: { color: '#238636' } },              // GREEN
+            { value: needsAttention, name: 'Needs Attention', itemStyle: { color: '#d29922' } },// YELLOW
+            { value: outdated, name: 'Outdated', itemStyle: { color: '#da3633' } }              // RED
+          ]
         }
       ]
     };
-  }, [successCount, failCount]);
+  }, [plugins]);
 
-  const recipeLeaderboardOption = useMemo(() => {
-    const failedMigrations = migrations.filter((m: any) => m.migrationStatus === 'fail');
-    const recipeCounts: Record<string, number> = {};
+  // Chart 2: Dependency Risk Health
+  const dependencyHealthOption = useMemo(() => {
+    let low = 0, medium = 0, high = 0;
 
-    failedMigrations.forEach((m: any) => {
-      const recipe = m.recipeName || m.migrationName || 'Unknown Recipe';
-      recipeCounts[recipe] = (recipeCounts[recipe] || 0) + 1;
+    plugins.forEach(p => {
+      if (p.overallDependencyRisk === 'LOW') low++;
+      else if (p.overallDependencyRisk === 'MEDIUM') medium++;
+      else if (p.overallDependencyRisk === 'HIGH') high++;
     });
-
-    const sortedRecipes = Object.entries(recipeCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    // ECharts horizontal bar chart expects data from bottom to top for descending order
-    sortedRecipes.reverse();
 
     return {
-      title: { text: 'Top 5 Failing Recipes', left: 'center', textStyle: { color: '#e0e0e0', fontWeight: 'bold' } },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-      xAxis: { type: 'value', splitLine: { lineStyle: { color: '#30363d' } }, axisLabel: { color: '#a0a0a0' } },
-      yAxis: {
-        type: 'category',
-        data: sortedRecipes.map(r => {
-          // Truncate long names
-          const name = r[0];
-          return name.length > 30 ? name.substring(0, 30) + '...' : name;
-        }),
-        axisLabel: { color: '#a0a0a0' }
-      },
+      title: { text: 'Plugin Dependency Health', left: 'center', textStyle: { color: '#e0e0e0', fontWeight: 'bold' } },
+      tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
+      legend: { bottom: '0', textStyle: { color: '#a0a0a0' } },
       series: [
         {
-          type: 'bar',
-          data: sortedRecipes.map(r => r[1]),
-          itemStyle: { color: '#da3633', borderRadius: [0, 4, 4, 0] },
-          label: { show: true, position: 'right', color: '#e0e0e0' }
+          name: 'Dependency Risk',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          itemStyle: { borderRadius: 5, borderColor: '#161b22', borderWidth: 2 },
+          label: { show: false, position: 'center' },
+          emphasis: { label: { show: true, fontSize: '18', fontWeight: 'bold', color: '#fff' } },
+          data: [
+            { value: low, name: 'Low Risk', itemStyle: { color: '#238636' } },
+            { value: medium, name: 'Medium Risk', itemStyle: { color: '#d29922' } },
+            { value: high, name: 'High Risk', itemStyle: { color: '#da3633' } }
+          ]
         }
       ]
     };
-  }, [migrations]);
+  }, [plugins]);
 
-
-  const filteredMigrations = useMemo(() => {
-    return migrations.filter((m: any) => {
-      const pName = (m.pluginName || '').toLowerCase();
-      const mName = (m.migrationName || '').toLowerCase();
+  const filteredPlugins = useMemo(() => {
+    return plugins.filter(p => {
       const searchLower = searchQuery.toLowerCase();
+      const matchName = (p.name || '').toLowerCase().includes(searchLower);
+      const matchTitle = (p.title || '').toLowerCase().includes(searchLower);
 
-      const matchesSearch = pName.includes(searchLower) || mName.includes(searchLower);
+      const matchesSearch = matchName || matchTitle;
+      const matchesDepFilter = dependencyFilter === 'ALL' || p.overallDependencyRisk === dependencyFilter;
 
-      const statusLower = (m.migrationStatus || '').toLowerCase();
-      const matchesStatus = statusFilter === 'all' || statusLower === statusFilter;
+      return matchesSearch && matchesDepFilter;
+    }).slice(0, 100);
+  }, [plugins, searchQuery, dependencyFilter]);
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [migrations, searchQuery, statusFilter]);
+  const getRiskIcon = (risk: string) => {
+    if (risk === 'LOW') return '✅';
+    if (risk === 'MEDIUM') return '⚠️';
+    if (risk === 'HIGH') return '🔴';
+    return '';
+  };
+
+  const getRiskColorClass = (risk: string) => {
+    if (risk === 'LOW') return 'badge-healthy';
+    if (risk === 'MEDIUM') return 'badge-needs-attention';
+    if (risk === 'HIGH') return 'badge-outdated';
+    return '';
+  };
 
   return (
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>Jenkins Plugin Modernizer</h1>
-        <p>Overview of plugin migration statuses and recipe effectiveness.</p>
+        <p>Live insights on Jenkins plugin popularity and ecosystem health.</p>
       </header>
 
-      {migrations.length > 0 ? (
-        <>
-          <div className="kpi-grid">
-            <div className="kpi-card">
-              <h3>Total Plugins</h3>
-              <div className="kpi-value text-blue">{uniquePluginsCount}</div>
-            </div>
-            <div className="kpi-card">
-              <h3>Total Successes</h3>
-              <div className="kpi-value text-success">{successCount}</div>
-            </div>
-            <div className="kpi-card">
-              <h3>Total Failures</h3>
-              <div className="kpi-value text-danger">{failCount}</div>
-            </div>
+      <section className="dashboard-section">
+        {loading ? (
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Fetching plugins from Jenkins...</p>
           </div>
-
-          <div className="charts-grid">
-            <div className="chart-card">
-              <ReactECharts option={pieChartOption} style={{ height: '350px' }} />
-            </div>
-            <div className="chart-card">
-              <ReactECharts option={recipeLeaderboardOption} style={{ height: '350px' }} />
-            </div>
+        ) : error ? (
+          <div className="error-state">
+            <h3>⚠️ Live Jenkins plugin data could not be loaded. Please try again later.</h3>
+            <p className="text-muted">{error}</p>
           </div>
-
-          <div className="table-section">
-            <div className="table-controls">
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search by plugin or migration name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <select
-                className="status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All Statuses</option>
-                <option value="success">Success</option>
-                <option value="fail">Fail</option>
-              </select>
+        ) : (
+          <>
+            <div className="kpi-grid">
+              <div className="kpi-card">
+                <h3>Total Plugins</h3>
+                <div className="kpi-value text-blue">{totalPlugins}</div>
+              </div>
+              <div className="kpi-card">
+                <h3>High Popularity</h3>
+                <div className="kpi-value text-success">{popularCount}</div>
+              </div>
+              <div className="kpi-card">
+                <h3>Standard / Niche</h3>
+                <div className="kpi-value" style={{ color: '#d29922' }}>{nicheCount}</div>
+              </div>
             </div>
 
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Plugin Name</th>
-                    <th>Migration / Recipe Name</th>
-                    <th>Status</th>
-                    <th>Link to PR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMigrations.map((m: any, i: number) => {
-                    const statusLower = (m.migrationStatus || '').toLowerCase();
-                    return (
-                      <tr key={i} className={`row-${statusLower}`}>
-                        <td className="font-medium">{m.pluginName || 'Unknown Plugin'}</td>
-                        <td>{m.migrationName || m.recipeName || 'Unknown Migration'}</td>
-                        <td>
-                          <span className={`status-badge badge-${statusLower}`}>
-                            {m.migrationStatus?.toUpperCase() || 'N/A'}
-                          </span>
-                        </td>
-                        <td>
-                          {m.pullRequestUrl ? (
-                            <a href={m.pullRequestUrl} target="_blank" rel="noopener noreferrer" className="pr-link">
-                              View PR
-                            </a>
-                          ) : (
-                            <span className="text-muted">N/A</span>
-                          )}
+            <div className="charts-grid">
+              <div className="chart-card">
+                <ReactECharts option={modernizationHealthOption} style={{ height: '350px' }} />
+              </div>
+              <div className="chart-card">
+                <ReactECharts option={dependencyHealthOption} style={{ height: '350px' }} />
+              </div>
+            </div>
+
+            <div className="table-section">
+              <div className="table-header-row">
+                <h3>Jenkins Plugins Directory</h3>
+                <div className="table-controls">
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Search by plugin name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <select
+                    className="risk-filter search-input"
+                    value={dependencyFilter}
+                    onChange={(e) => setDependencyFilter(e.target.value)}
+                  >
+                    <option value="ALL">All Dependencies</option>
+                    <option value="LOW">✅ Low Risk Only</option>
+                    <option value="MEDIUM">⚠️ Medium Risk Only</option>
+                    <option value="HIGH">🔴 High Risk Only</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Plugin Name</th>
+                      <th>Version</th>
+                      <th>Modernization Score</th>
+                      <th>Maintenance Risk</th>
+                      <th>Dependency Risk</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPlugins.map((plugin, i) => {
+                      const riskLower = (plugin.riskLevel || '').toLowerCase().replace(' ', '-');
+                      return (
+                        <tr key={plugin.name || i} onClick={() => setSelectedPlugin(plugin)}>
+                          <td>
+                            <div className="font-medium">{plugin.title || plugin.name}</div>
+                            <div className="text-muted" style={{ fontSize: '0.8rem' }}>{plugin.name}</div>
+                          </td>
+                          <td>{plugin.version}</td>
+                          <td>
+                            <strong>{plugin.modernizationScore}/100</strong>
+                          </td>
+                          <td>
+                            <span className={`status-badge badge-${riskLower}`}>
+                              {plugin.riskLevel}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`status-badge ${getRiskColorClass(plugin.overallDependencyRisk)}`}>
+                              <span className="risk-icon">{getRiskIcon(plugin.overallDependencyRisk)}</span>
+                              {plugin.overallDependencyRisk}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {filteredPlugins.length === 0 && (
+                      <tr>
+                        <td colSpan={5}>
+                          <div className="empty-state">No plugins match your search.</div>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {filteredMigrations.length === 0 && (
-                <div className="empty-state">
-                  No migrations match your filters.
-                </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Side Panel Overlay */}
+            <div
+              className={`side-panel-overlay ${selectedPlugin ? 'open' : ''}`}
+              onClick={() => setSelectedPlugin(null)}
+            ></div>
+
+            {/* Side Panel */}
+            <div className={`side-panel ${selectedPlugin ? 'open' : ''}`}>
+              {selectedPlugin && (
+                <>
+                  <div className="side-panel-header">
+                    <div>
+                      <h3 className="side-panel-title">{selectedPlugin.title || selectedPlugin.name}</h3>
+                      <p className="side-panel-subtitle">Version: {selectedPlugin.version}</p>
+                    </div>
+                    <button className="close-btn" onClick={() => setSelectedPlugin(null)}>×</button>
+                  </div>
+
+                  <div className="side-panel-content">
+                    <h4 style={{ marginTop: 0, marginBottom: '1.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                      Dependencies ({selectedPlugin.dependencyRisks.length})
+                    </h4>
+
+                    {selectedPlugin.dependencyRisks.length === 0 ? (
+                      <p className="text-muted">No dependencies found.</p>
+                    ) : (
+                      <div className="dependency-list">
+                        {selectedPlugin.dependencyRisks.map((dep, idx) => (
+                          <div className="dependency-card" key={idx}>
+                            <div className="dependency-info">
+                              <h4>{dep.dependencyName}</h4>
+                              <p>Version: {dep.dependencyVersion || 'Unknown'}</p>
+                            </div>
+                            <div className="dependency-status">
+                              <span className={`status-badge ${getRiskColorClass(dep.riskLevel)}`}>
+                                <span className="risk-icon">{getRiskIcon(dep.riskLevel)}</span>
+                                {dep.riskLevel}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
-          </div>
-        </>
-      ) : (
-        <div className="error-state">
-          <h3>⚠️ Could not parse the migration array</h3>
-          <p>The migrations array is empty or the shape of the JSON isn't what we expect. Please check the data source.</p>
-        </div>
-      )}
+
+          </>
+        )}
+      </section>
     </div>
   )
 }
