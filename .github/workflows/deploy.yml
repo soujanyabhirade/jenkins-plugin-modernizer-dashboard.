@@ -1,0 +1,30 @@
+name: Build and Deploy Dashboard
+on:
+  repository_dispatch:
+    types: [metadata_updated] # Listens for the signal from your metadata fork
+  push:
+    branches: [main] # Also builds whenever you manually update your code
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Project
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist # Vite builds into the 'dist' folder
