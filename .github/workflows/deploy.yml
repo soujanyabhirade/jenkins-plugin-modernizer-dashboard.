@@ -1,9 +1,12 @@
 name: Build and Deploy Dashboard
 on:
   repository_dispatch:
-    types: [metadata_updated] # Listens for the signal from your metadata fork
+    types: [metadata_updated]
   push:
-    branches: [main] # Also builds whenever you manually update your code
+    branches: [main]
+
+permissions:
+  contents: write # This gives the action permission to push the gh-pages branch
 
 jobs:
   build-and-deploy:
@@ -17,14 +20,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Project
-        run: npm run build
+      - name: Install and Build
+        run: |
+          npm install
+          npm run build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist # Vite builds into the 'dist' folder
+          publish_dir: ./dist
