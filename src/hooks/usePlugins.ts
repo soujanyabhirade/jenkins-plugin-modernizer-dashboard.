@@ -33,9 +33,13 @@ export const usePlugins = (): UsePluginsReturn => {
 
                     setData(fullyAnalyzedPlugins);
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 if (mounted) {
-                    setError(err.message || 'Failed to fetch plugins');
+                    if (err instanceof Error) {
+                        setError(err.message || 'Failed to fetch plugins');
+                    } else {
+                        setError('Failed to fetch plugins');
+                    }
                 }
             } finally {
                 if (mounted) {
